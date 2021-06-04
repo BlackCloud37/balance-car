@@ -38,6 +38,7 @@ extern "C" {
 #include "control.h"
 #include <stdio.h>
 #include "outputdata.h"
+#include "oled.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -63,6 +64,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define OLED_DC_Pin GPIO_PIN_13
+#define OLED_DC_GPIO_Port GPIOC
+#define TRIG_Pin GPIO_PIN_2
+#define TRIG_GPIO_Port GPIOA
 #define BIN1_Pin GPIO_PIN_3
 #define BIN1_GPIO_Port GPIOA
 #define BIN2_Pin GPIO_PIN_4
@@ -73,6 +78,12 @@ void Error_Handler(void);
 #define AIN2_GPIO_Port GPIOB
 #define LED_Pin GPIO_PIN_12
 #define LED_GPIO_Port GPIOB
+#define OLED_RST_Pin GPIO_PIN_13
+#define OLED_RST_GPIO_Port GPIOB
+#define OLED_SDA_Pin GPIO_PIN_14
+#define OLED_SDA_GPIO_Port GPIOB
+#define OLED_SCL_Pin GPIO_PIN_15
+#define OLED_SCL_GPIO_Port GPIOB
 #define Button_Pin GPIO_PIN_8
 #define Button_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */

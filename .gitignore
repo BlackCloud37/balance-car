@@ -1,0 +1,6 @@
+*.o
+*.crf
+*.d
+
+MDK-ARM/MiaowLabs-Demo/*
+!MDK-ARM/MiaowLabs-Demo/*.hex

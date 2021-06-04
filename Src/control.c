@@ -22,7 +22,7 @@
 #define SPEED_CONTROL_PERIOD    25      //速度环控制周期
 
 
-float g_fCarAngleOffset = 1;//每辆小车的机械零点都不一定相同
+float g_fCarAngleOffset = 2;//每辆小车的机械零点都不一定相同
 short x_nAcc,y_nAcc,z_nAcc;//加速度x轴、y轴、z轴数据
 short x_nGyro,y_nGyro,z_nGyro;//陀螺仪x轴、y轴、z轴数据
 float x_fAcc,y_fAcc,z_fAcc;//用于存储加速度x轴、y轴、z轴数据运算后的数据

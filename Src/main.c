@@ -26,7 +26,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "u8g2.h"
+#include "u8x8.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,7 +68,8 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  u8g2_t u8g2;
+	int nTemp;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -93,6 +95,7 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM3_Init();
   MX_I2C1_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);//开启TIM4的编码器接口模式
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);//开启TIM2的编码器接口模式
@@ -107,14 +110,23 @@ int main(void)
 	
   if(!MPU_Init())//如果MPU6050初始化成功，返回0，!0则为1
   {
-	printf("MPU-6050 Init Successfully");//成功了则打印 MPU-6050 Init Successfully
+		printf("MPU-6050 Init Successfully");//成功了则打印 MPU-6050 Init Successfully
   }
+	u8g2_Setup_ssd1306_128x64_noname_f(&u8g2,U8G2_R0,u8x8_byte_4wire_sw_spi,u8x8_stm32_gpio_and_delay);//初始化u8g2
+  u8g2_InitDisplay(&u8g2);//初始zai化显示器
+  u8g2_SetPowerSave(&u8g2,0);//唤醒显示器
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		u8g2_ClearBuffer(&u8g2);//清空缓冲区的内容
+       if(++nTemp>=32) nTemp=1;
+      u8g2_DrawCircle(&u8g2,64,32,nTemp,U8G2_DRAW_ALL);//画圆
+      u8g2_DrawCircle(&u8g2,32,32,nTemp,U8G2_DRAW_ALL);//画圆
+      u8g2_DrawCircle(&u8g2,96,32,nTemp,U8G2_DRAW_ALL);//画圆
+      u8g2_SendBuffer(&u8g2);//绘制缓冲区的内容
     if(g_iButtonState == 1){            
 	  HAL_GPIO_TogglePin(LED_GPIO_Port,LED_Pin);  //翻转LED引脚（PB12）的电平
       g_iButtonState = 0;                         //按键状态归0，代表松开
