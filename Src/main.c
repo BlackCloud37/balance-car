@@ -87,6 +87,7 @@ int main(void)
   u8g2_t u8g2;
 	char cStr[3];
   char cStr2[6];
+	char cStr3[5];
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -156,15 +157,25 @@ int main(void)
 			SoftTimer[2] = 20;//20毫秒刷新一次
 			u8g2_ClearBuffer(&u8g2);//清空缓冲区的内容
 
-			u8g2_DrawStr(&u8g2,0,30,"Angle:");//输出固定不变的字符串Angle：        
+			u8g2_DrawStr(&u8g2,0,10,"Angle:");//输出固定不变的字符串Angle：        
 			sprintf(cStr,"%5.1f",g_fCarAngle);//将角度数据格式化输出到字符串cStr            
-			u8g2_DrawStr(&u8g2,50,30,cStr);//输出实时变化的角度数据
+			u8g2_DrawStr(&u8g2,50,10,cStr);//输出实时变化的角度数据
 
-			u8g2_DrawStr(&u8g2,0,50,"Distance:");//输出固定不变的字符串Distane：            
+			u8g2_DrawStr(&u8g2,0,30,"Distance:");//输出固定不变的字符串Distane：            
 			sprintf(cStr2,"%5.1f",(float)Distance);//将超声波距离数据格式化输出到字符串cStr2
-			u8g2_DrawStr(&u8g2,50,50,cStr2);//输出实时变化的超声波距离
+			u8g2_DrawStr(&u8g2,50,30,cStr2);//输出实时变化的超声波距离
+			
+			u8g2_DrawStr(&u8g2, 0, 50, "IR:");
+			sprintf(cStr3, "%d %d %d %d", 
+				HAL_GPIO_ReadPin(GPIOB, Lb_Pin),
+				HAL_GPIO_ReadPin(GPIOB, La_Pin),
+			  HAL_GPIO_ReadPin(GPIOA, Ra_Pin),
+				HAL_GPIO_ReadPin(GPIOA, Rb_Pin)
+			);
+			u8g2_DrawStr(&u8g2,50,50,cStr3);
+			
 			u8g2_SendBuffer(&u8g2);//绘制缓冲区的内容
-
+			
 			Read_Distane();//每20ms读一次超声波数据
 		}
     /* USER CODE END WHILE */

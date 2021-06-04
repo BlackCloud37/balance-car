@@ -212,7 +212,7 @@ void SysTick_Handler(void)
     }else if(g_nMainEventCount==4){    
         MotorOutput();         //电机输出函数，每5ms执行一次
     }
-    ButtonScan();
+    //ButtonScan();
 	/*
 	g_nMainEventCount++;       //每进一次中断，主事件函数自动加1
   if(g_nMainEventCount>=5)   //SysTick是1ms一次，这里判断语句大于5就是5ms运行一次

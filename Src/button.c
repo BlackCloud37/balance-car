@@ -6,6 +6,7 @@ int iButtonCount;//i代表int型变量，ButtonCount表示按键计数变量
 int iButtonFlag;//i代表int型变量，ButtonFlag表示重按键标志，1代表重新按键，0为没有重新按键
 int g_iButtonState;//g是globle代表全局变量，会在其他地方引用；i代表int型变量，ButtonState表示按键标志，1代表按下，0代表松开
 void ButtonScan(void){
+	/*
   if(   HAL_GPIO_ReadPin(Button_GPIO_Port,Button_Pin) == GPIO_PIN_RESET )//如果引脚检测到低电平
   {
       iButtonCount++;                         //按键按下，计数iButtonCount加1
@@ -30,4 +31,5 @@ else                                      //如果一直无检测到低电平，即一直无按键
          g_iButtonState=0;                  //清除按键标志
          iButtonFlag=0;                   //清除重按键标志
     }
+		*/
 }
