@@ -88,7 +88,8 @@ int main(void)
 	char cStr[3];
   char cStr2[6];
 	char cStr3[5];
-  /* USER CODE END 1 */
+	int modeCnt = 0;
+	/* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -135,14 +136,16 @@ int main(void)
   u8g2_InitDisplay(&u8g2);//初始zai化显示器
   u8g2_SetPowerSave(&u8g2,0);//唤醒显示器
 	u8g2_SetFont(&u8g2,u8g2_font_6x12_mr);//设置英文字体
+	
+	SetMode(STOP_MODE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		RunMode();
 		SecTask();//秒级任务
-
 		if(SoftTimer[1] == 0)
 		{// 每隔20ms 执行一次
 			SoftTimer[1] = 20;
@@ -157,14 +160,15 @@ int main(void)
 			SoftTimer[2] = 20;//20毫秒刷新一次
 			u8g2_ClearBuffer(&u8g2);//清空缓冲区的内容
 
-			u8g2_DrawStr(&u8g2,0,10,"Angle:");//输出固定不变的字符串Angle：        
-			sprintf(cStr,"%5.1f",g_fCarAngle);//将角度数据格式化输出到字符串cStr            
+			u8g2_DrawStr(&u8g2,0,10,"Pulse:");//输出固定不变的字符串Angle：        
+			sprintf(cStr,"%d %d",g_iLeftTurnRoundCnt, g_iRightTurnRoundCnt);//将角度数据格式化输出到字符串cStr            
 			u8g2_DrawStr(&u8g2,50,10,cStr);//输出实时变化的角度数据
 
 			u8g2_DrawStr(&u8g2,0,30,"Distance:");//输出固定不变的字符串Distane：            
 			sprintf(cStr2,"%5.1f",(float)Distance);//将超声波距离数据格式化输出到字符串cStr2
 			u8g2_DrawStr(&u8g2,50,30,cStr2);//输出实时变化的超声波距离
 			
+			/*
 			u8g2_DrawStr(&u8g2, 0, 50, "IR:");
 			sprintf(cStr3, "%d %d %d %d", 
 				HAL_GPIO_ReadPin(GPIOB, Lb_Pin),
@@ -172,12 +176,31 @@ int main(void)
 			  HAL_GPIO_ReadPin(GPIOA, Ra_Pin),
 				HAL_GPIO_ReadPin(GPIOA, Rb_Pin)
 			);
+			*/
+			u8g2_DrawStr(&u8g2, 0, 50, "MODE:");
+			sprintf(cStr3, "%d %d %d", SoftTimer[3], modeCnt, g_currentMode);
 			u8g2_DrawStr(&u8g2,50,50,cStr3);
 			
 			u8g2_SendBuffer(&u8g2);//绘制缓冲区的内容
 			
 			Read_Distane();//每20ms读一次超声波数据
 		}
+		
+		if(SoftTimer[3] == 0) {
+			SoftTimer[3] = 10000;
+			if (modeCnt == 0)
+				SetMode(FORWARD_MODE);
+			else if (modeCnt == 2)
+				SetMode(BACKWARD_MODE);
+			else if (modeCnt == 4)
+				SetMode(LEFTMOVE_MODE);
+			else if (modeCnt == 6)
+				SetMode(RIGHTMOVE_MODE);
+			else
+				SetMode(STOP_MODE);
+			modeCnt++;
+		}
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

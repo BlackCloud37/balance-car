@@ -7,10 +7,15 @@ extern unsigned int g_nMainEventCount; //主事件计数，用在中断中
 extern unsigned int g_nGetPulseCount;  //捕获脉冲计数，用在中断中
 extern unsigned int g_nSpeedControlCount;
 extern float g_fCarAngle;
-extern unsigned int g_nLeftMotorPulse;
+extern int g_iLeftTurnRoundCnt, g_iRightTurnRoundCnt;
 extern int g_nSpeedTarget;
 extern int g_nLeftMotorOutput;
 extern int g_nSpeedControlPeriod;//速度环控制周期计算量
+
+enum ACTION_MODE{
+	STOP_MODE = 0, FORWARD_MODE, BACKWARD_MODE, LEFTMOVE_MODE, RIGHTMOVE_MODE, RI_MODE, SONIC_MODE
+};
+extern enum ACTION_MODE g_currentMode;
 
 void SpeedControlOutput(void);
 void GetMpuData(void);
@@ -21,5 +26,6 @@ void SetMotorVoltageAndDirection(int nLeftMotorPwm,int nRightMotorPwm);
 void MotorOutput(void);
 void AngleControl(void);
 void SpeedControl(void);
-
+void SetMode(enum ACTION_MODE mode);
+void RunMode(void);
 #endif

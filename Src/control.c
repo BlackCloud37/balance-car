@@ -7,52 +7,67 @@
 #include "tim.h"
 #include "main.h"
 
-#define MOTOR_OUT_DEAD_VAL       0	   //死区值
-#define MOTOR_OUT_MAX           1000	   //占空比正最大值
-#define MOTOR_OUT_MIN         (-1000)   //占空比负最大值
+#define MOTOR_OUT_DEAD_VAL       0	                           //死区值
+#define MOTOR_OUT_MAX           1000	                         //占空比正最大值
+#define MOTOR_OUT_MIN         (-1000)                          //占空比负最大值
 
-#define CAR_ANGLE_SET 0//目标角度
-#define CAR_ANGLE_SPEED_SET 0//目标角速度
+#define CAR_ANGLE_SET 0                                        //目标角度
+#define CAR_ANGLE_SPEED_SET 0                                  //目标角速度
 
-#define CAR_ZERO_ANGLE  (g_fCarAngleOffset)  //机械零点偏移值
+#define CAR_ZERO_ANGLE  (g_fCarAngleOffset)                    //机械零点偏移值
 
-#define CAR_SPEED_SET 0//小车目标速度
-#define CAR_POSITION_MAX 900//路程（速度积分）上限
-#define CAR_POSITION_MIN (-900)//路程（速度积分）下限
-#define SPEED_CONTROL_PERIOD    25      //速度环控制周期
+#define CAR_SPEED_SET (g_iCarSpeedSet)                         //小车目标速度
+#define CAR_POSITION_MAX 900                                   //路程（速度积分）上限
+#define CAR_POSITION_MIN (-900)                                //路程（速度积分）下限
+#define SPEED_CONTROL_PERIOD    25                             //速度环控制周期
+#define PULSE_PER_CM            70                             //每厘米的pulse数目
 
+float g_fCarAngleOffset = 2;                                   //每辆小车的机械零点都不一定相同
+short x_nAcc,y_nAcc,z_nAcc;                                    //加速度x轴、y轴、z轴数据
+short x_nGyro,y_nGyro,z_nGyro;                                 //陀螺仪x轴、y轴、z轴数据
+float x_fAcc,y_fAcc,z_fAcc;                                    //用于存储加速度x轴、y轴、z轴数据运算后的数据
+float g_fAccAngle;                                             //加速度传感器经过atan2()解算得到的角度
+float g_fGyroAngleSpeed;                                       //陀螺仪角速度
+float g_fCarAngle;                                             //小车倾角
+float dt = 0.005;                                              //互补滤波器控制周期
 
-float g_fCarAngleOffset = 2;//每辆小车的机械零点都不一定相同
-short x_nAcc,y_nAcc,z_nAcc;//加速度x轴、y轴、z轴数据
-short x_nGyro,y_nGyro,z_nGyro;//陀螺仪x轴、y轴、z轴数据
-float x_fAcc,y_fAcc,z_fAcc;//用于存储加速度x轴、y轴、z轴数据运算后的数据
+unsigned int g_nMainEventCount;                                //主事件计数，用在中断中
+unsigned int g_nSpeedControlCount;                             //速度控制计数，用在中断中
 
-float g_fAccAngle;//加速度传感器经过atan2()解算得到的角度
-float g_fGyroAngleSpeed;//陀螺仪角速度
-float g_fCarAngle;//小车倾角
-float dt = 0.005;//互补滤波器控制周期
-
-unsigned int g_nMainEventCount;//主事件计数，用在中断中
-unsigned int g_nSpeedControlCount;//速度控制计数，用在中断中
-
-unsigned int g_nLeftMotorPulse,g_nRightMotorPulse;//全局变量，保存左电机脉冲数值
-
-int nPwmBais;//PWM增量
-int nLeftMotorPwm,nRightMotorPwm;//左电机PWM输出总量，左电机PWM输出总量
-int nLeftMotorErrorPrev,nRightMotorErrorPrev;//左电机上一次偏差，右电机上一次偏差
+int nPwmBais;                                                  //PWM增量
+int nLeftMotorPwm,nRightMotorPwm;                              //左电机PWM输出总量，左电机PWM输出总量
+int nLeftMotorErrorPrev,nRightMotorErrorPrev;                  //左电机上一次偏差，右电机上一次偏差
 
 float g_fLeftMotorOut,g_fRightMotorOut;
 float g_fAngleControlOut;
 
 
-float g_fSpeedControlOut,g_fSpeedControlOutNew,g_fSpeedControlOutOld;//速度环输出
-int g_nSpeedControlPeriod;//速度环控制周期计算量
-float g_fCarSpeed;//小车实际速度
-float g_fCarSpeedPrev;//小车前一次速度
-float g_fCarPosition;//小车路程
-long g_lLeftMotorPulseSigma;//左电机25ms内累计脉冲总和
-long g_lRightMotorPulseSigma;//右电机25ms内累计脉冲总和
-float g_fSpeedControlOut;//速度环输出
+float g_fSpeedControlOut,g_fSpeedControlOutNew,g_fSpeedControlOutOld; //速度环输出
+int g_nSpeedControlPeriod;                                            //速度环控制周期计算量
+float g_fCarSpeed;                                                    //小车实际速度
+float g_fCarSpeedPrev;                                                //小车前一次速度
+float g_fCarPosition;                                                 //小车路程
+long g_lLeftMotorPulseSigma;                                          //左电机25ms内累计脉冲总和
+long g_lRightMotorPulseSigma;                                         //右电机25ms内累计脉冲总和
+float g_fSpeedControlOut;                                             //速度环输出
+
+
+/* 运动控制 */
+enum ACTION_MODE g_currentMode = STOP_MODE;
+float g_fSpeed;
+float g_fCarSpeed;
+float g_iCarSpeedSet;// 速度
+float g_fCarSpeedOld;
+float g_fCarPosition;
+//int g_nLeftMotorPulse, g_nRightMotorPulse;                   //全局变量，保存电机脉冲数值(即距离)
+// 方向
+float g_fDirection,  // 方向
+	g_fDirectionOld, g_fDirectionNew, g_fDirectionOut;
+
+int g_iLeftTurnRoundCnt = 0;
+int g_iRightTurnRoundCnt = 0;
+
+
 
 void GetMpuData(void)//读取MPU-6050数据
 {
@@ -78,19 +93,19 @@ void AngleCalculate(void)//角度计算
     g_fCarAngle = ComplementaryFilter(g_fAccAngle, g_fGyroAngleSpeed, dt);
 
     g_fCarAngle = g_fCarAngle - CAR_ZERO_ANGLE;//减去机械零点偏移值
-
 }
 
 void GetMotorPulse(void)//读取电机脉冲
 {
-    g_nRightMotorPulse = (short)(__HAL_TIM_GET_COUNTER(&htim4));//获取计数器值
-    g_nRightMotorPulse = (-g_nRightMotorPulse);
+		int r = -((short)(__HAL_TIM_GET_COUNTER(&htim4)));//获取计数器值;
     __HAL_TIM_SET_COUNTER(&htim4,0);//TIM4计数器清零
-    g_nLeftMotorPulse = (short)(__HAL_TIM_GET_COUNTER(&htim2));//获取计数器值
+    int l = (short)(__HAL_TIM_GET_COUNTER(&htim2));//获取计数器值
     __HAL_TIM_SET_COUNTER(&htim2,0);//TIM2计数器清零
 
-    g_lLeftMotorPulseSigma += g_nLeftMotorPulse;//速度外环使用的脉冲累积
-    g_lRightMotorPulseSigma += g_nRightMotorPulse;//速度外环使用的脉冲累积
+    g_lLeftMotorPulseSigma += l;//速度外环使用的脉冲累积
+    g_lRightMotorPulseSigma += r;//速度外环使用的脉冲累积
+		g_iLeftTurnRoundCnt -= l;    // 运动距离控制
+		g_iRightTurnRoundCnt -= r;   // 运动距离控制
 }
 
 
@@ -143,29 +158,28 @@ void SetMotorVoltageAndDirection(int nLeftMotorPwm,int nRightMotorPwm)//设置电机
 			HAL_GPIO_WritePin(BIN2_GPIO_Port, BIN2_Pin, GPIO_PIN_SET);
 			__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, nLeftMotorPwm);
 		}
-		
 }
 
 
 void MotorOutput(void)//电机输出函数,将直立控制、速度控制、方向控制的输出量进行叠加,并加入死区常量，对输出饱和作出处理。
 {
+	g_fLeftMotorOut  = g_fAngleControlOut - g_fSpeedControlOut - g_fDirection ;	//这里的电机输出等于角度环控制量 + 速度环外环,这里的 - g_fSpeedControlOut 是因为速度环的极性跟角度环不一样，角度环是负反馈，速度环是正反馈
+	g_fRightMotorOut = g_fAngleControlOut - g_fSpeedControlOut + g_fDirection ;
 
-    g_fLeftMotorOut  = g_fAngleControlOut - g_fSpeedControlOut;//这里的电机输出等于角度环控制量 + 速度环外环,这里的 - g_fSpeedControlOut 是因为速度环的极性跟角度环不一样，角度环是负反馈，速度环是正反馈
-    g_fRightMotorOut = g_fAngleControlOut - g_fSpeedControlOut;
 
-    /*增加电机死区常数*/
-    if((int)g_fLeftMotorOut>0)       g_fLeftMotorOut  += MOTOR_OUT_DEAD_VAL;
-    else if((int)g_fLeftMotorOut<0)  g_fLeftMotorOut  -= MOTOR_OUT_DEAD_VAL;
-    if((int)g_fRightMotorOut>0)      g_fRightMotorOut += MOTOR_OUT_DEAD_VAL;
-    else if((int)g_fRightMotorOut<0) g_fRightMotorOut -= MOTOR_OUT_DEAD_VAL;
+	/*增加死区常数*/
+	if((int)g_fLeftMotorOut>0)       g_fLeftMotorOut  += MOTOR_OUT_DEAD_VAL;
+	else if((int)g_fLeftMotorOut<0)  g_fLeftMotorOut  -= MOTOR_OUT_DEAD_VAL;
+	if((int)g_fRightMotorOut>0)      g_fRightMotorOut += MOTOR_OUT_DEAD_VAL;
+	else if((int)g_fRightMotorOut<0) g_fRightMotorOut -= MOTOR_OUT_DEAD_VAL;
 
-    /*输出饱和处理，防止超出PWM范围*/            
-    if((int)g_fLeftMotorOut  > MOTOR_OUT_MAX)    g_fLeftMotorOut  = MOTOR_OUT_MAX;
-    if((int)g_fLeftMotorOut  < MOTOR_OUT_MIN)    g_fLeftMotorOut  = MOTOR_OUT_MIN;
-    if((int)g_fRightMotorOut > MOTOR_OUT_MAX)    g_fRightMotorOut = MOTOR_OUT_MAX;
-    if((int)g_fRightMotorOut < MOTOR_OUT_MIN)    g_fRightMotorOut = MOTOR_OUT_MIN;
-
-    SetMotorVoltageAndDirection((int)g_fLeftMotorOut,(int)g_fRightMotorOut);
+	/*输出饱和处理，防止超出PWM范围*/			
+	if((int)g_fLeftMotorOut  > MOTOR_OUT_MAX)	g_fLeftMotorOut  = MOTOR_OUT_MAX;
+	if((int)g_fLeftMotorOut  < MOTOR_OUT_MIN)	g_fLeftMotorOut  = MOTOR_OUT_MIN;
+	if((int)g_fRightMotorOut > MOTOR_OUT_MAX)	g_fRightMotorOut = MOTOR_OUT_MAX;
+	if((int)g_fRightMotorOut < MOTOR_OUT_MIN)	g_fRightMotorOut = MOTOR_OUT_MIN;
+	
+  SetMotorVoltageAndDirection((int)g_fLeftMotorOut,(int)g_fRightMotorOut);
 }
 
 void AngleControl(void)	 //角度环控制函数
@@ -180,7 +194,7 @@ void AngleControl(void)	 //角度环控制函数
 // P0.8 I0.01
 void SpeedControl(void)//速度外环控制函数
 {
-    float fP=12.25,fI=0.108; //速度环PI参数，    
+    float fP=10.25,fI=0.108; //速度环PI参数，    
     float fDelta;//临时变量，用于存储误差
 
     g_fCarSpeed = (g_lLeftMotorPulseSigma + g_lRightMotorPulseSigma ) / 2;//左轮和右轮的速度平均值等于小车速度
@@ -207,4 +221,92 @@ void SpeedControlOutput(void)
   float fValue;
   fValue = g_fSpeedControlOutNew - g_fSpeedControlOutOld ;//速度计算量差值=本次速度计算量-上次速度计算量
   g_fSpeedControlOut = fValue * (g_nSpeedControlPeriod + 1) / SPEED_CONTROL_PERIOD + g_fSpeedControlOutOld;//速度计算量差值* 
+}
+
+// 根据min, max归一化输入输出
+float Scale(float input, float inputMin, float inputMax, float outputMin, float outputMax) { 
+  float output;
+  if (inputMin < inputMax)
+    output = (input - inputMin) / ((inputMax - inputMin) / (outputMax - outputMin));
+  else
+    output = (inputMin - input) / ((inputMin - inputMax) / (outputMax - outputMin));
+  if (output > outputMax)
+    output = outputMax;
+  else if (output < outputMin)
+    output = outputMin;
+  return output;
+}
+
+
+// 运动(方向/速度)控制函数
+void Steer(float direct, float speed)
+{
+	if(direct > 0)
+		g_fDirection = Scale(direct, 0, 10, 0, 400);
+	else
+		g_fDirection = -Scale(direct, 0, -10, 0, 400);
+	
+	if(speed > 0)
+		g_iCarSpeedSet = Scale(speed, 0, 10, 0, 70);
+	else
+		g_iCarSpeedSet = -Scale(speed, 0, -10, 0, 70);
+}
+
+void SetMode(enum ACTION_MODE mode) {
+	g_currentMode = mode;
+	switch(mode) {
+		case FORWARD_MODE: {
+			// < 0 < 0 stop
+			g_iLeftTurnRoundCnt = 100 * PULSE_PER_CM;
+			g_iRightTurnRoundCnt = 100 * PULSE_PER_CM;
+			Steer(0, 3);
+			break;
+		}
+		case BACKWARD_MODE: {
+			// > 0 > 0 stop
+			g_iLeftTurnRoundCnt = - 100 * PULSE_PER_CM;
+			g_iRightTurnRoundCnt = - 100 * PULSE_PER_CM;
+			Steer(0, -3);
+			break;
+		}
+		case LEFTMOVE_MODE: {
+			// < 0 < 0 stop
+			Steer(-1, 3);
+			g_iRightTurnRoundCnt = 85 * PULSE_PER_CM;
+			g_iLeftTurnRoundCnt = g_iRightTurnRoundCnt - 24 * PULSE_PER_CM;
+			break;
+		}
+		case RIGHTMOVE_MODE: {
+			// < 0 < 0 stop
+			Steer(1, 3);
+			g_iLeftTurnRoundCnt = 85 * PULSE_PER_CM;
+			g_iRightTurnRoundCnt = g_iLeftTurnRoundCnt - 24 * PULSE_PER_CM;
+			break;
+		}
+		default: {
+			Steer(0,0);
+			break;
+		}
+	}
+}
+
+void RunMode(void) {
+	switch(g_currentMode) {
+		case LEFTMOVE_MODE:
+		case RIGHTMOVE_MODE:
+		case FORWARD_MODE: {
+			// < 0 < 0 stop
+			if (g_iLeftTurnRoundCnt <= 0 && g_iRightTurnRoundCnt <= 0) SetMode(STOP_MODE);
+			break;
+		}
+		case BACKWARD_MODE: {
+			// > 0 > 0 stop
+			if (g_iLeftTurnRoundCnt >= 0 && g_iRightTurnRoundCnt >= 0) SetMode(STOP_MODE);
+			break;
+		}
+		default: {
+			Steer(0,0);
+			break;
+		}
+	}
 }
