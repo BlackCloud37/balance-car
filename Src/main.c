@@ -58,7 +58,23 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+unsigned short SoftTimer[5] = {0, 0, 0, 0, 0};
 
+void SoftTimerCountDown(void)
+{
+    char i;
+    for(i = 0;  i < 5; i++){
+        if(SoftTimer[i] > 0)SoftTimer[i]--;
+    }
+}
+//秒级任务
+void SecTask()
+{
+    if(SoftTimer[0])return;
+    else{
+        SoftTimer[0] = 1000;
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -69,7 +85,8 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   u8g2_t u8g2;
-	int nTemp;
+	char cStr[3];
+  char cStr2[6];
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -99,7 +116,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);//开启TIM4的编码器接口模式
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);//开启TIM2的编码器接口模式
-	
+	HAL_TIM_IC_Start_IT(&htim1,TIM_CHANNEL_4);//开启TIM1的捕获通道4，并且开启捕获中断
+	__HAL_TIM_ENABLE_IT(&htim1,TIM_IT_UPDATE);//使能更新中断
 	
   HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
   HAL_GPIO_WritePin(AIN1_GPIO_Port, AIN1_Pin, GPIO_PIN_RESET);
@@ -115,23 +133,40 @@ int main(void)
 	u8g2_Setup_ssd1306_128x64_noname_f(&u8g2,U8G2_R0,u8x8_byte_4wire_sw_spi,u8x8_stm32_gpio_and_delay);//初始化u8g2
   u8g2_InitDisplay(&u8g2);//初始zai化显示器
   u8g2_SetPowerSave(&u8g2,0);//唤醒显示器
+	u8g2_SetFont(&u8g2,u8g2_font_6x12_mr);//设置英文字体
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		u8g2_ClearBuffer(&u8g2);//清空缓冲区的内容
-       if(++nTemp>=32) nTemp=1;
-      u8g2_DrawCircle(&u8g2,64,32,nTemp,U8G2_DRAW_ALL);//画圆
-      u8g2_DrawCircle(&u8g2,32,32,nTemp,U8G2_DRAW_ALL);//画圆
-      u8g2_DrawCircle(&u8g2,96,32,nTemp,U8G2_DRAW_ALL);//画圆
-      u8g2_SendBuffer(&u8g2);//绘制缓冲区的内容
-    if(g_iButtonState == 1){            
-	  HAL_GPIO_TogglePin(LED_GPIO_Port,LED_Pin);  //翻转LED引脚（PB12）的电平
-      g_iButtonState = 0;                         //按键状态归0，代表松开
-    }
-	OutPut_Data();
+		SecTask();//秒级任务
+
+		if(SoftTimer[1] == 0)
+		{// 每隔20ms 执行一次
+			SoftTimer[1] = 20;
+			//ResponseIMU();            
+			//DebugService();            
+			//Parse(Uart3Buffer);
+
+		}            
+
+		if(SoftTimer[2] == 0)
+		{
+			SoftTimer[2] = 20;//20毫秒刷新一次
+			u8g2_ClearBuffer(&u8g2);//清空缓冲区的内容
+
+			u8g2_DrawStr(&u8g2,0,30,"Angle:");//输出固定不变的字符串Angle：        
+			sprintf(cStr,"%5.1f",g_fCarAngle);//将角度数据格式化输出到字符串cStr            
+			u8g2_DrawStr(&u8g2,50,30,cStr);//输出实时变化的角度数据
+
+			u8g2_DrawStr(&u8g2,0,50,"Distance:");//输出固定不变的字符串Distane：            
+			sprintf(cStr2,"%5.1f",(float)Distance);//将超声波距离数据格式化输出到字符串cStr2
+			u8g2_DrawStr(&u8g2,50,50,cStr2);//输出实时变化的超声波距离
+			u8g2_SendBuffer(&u8g2);//绘制缓冲区的内容
+
+			Read_Distane();//每20ms读一次超声波数据
+		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

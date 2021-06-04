@@ -185,6 +185,8 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
+	SoftTimerCountDown();//软定时器计时函数
+	
   g_nMainEventCount++;//每进一次中断，主事件函数自动加1
 
   g_nSpeedControlPeriod++;//速度环控制周期计算量自动加1
@@ -285,6 +287,52 @@ void USART1_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim == &htim1)
+    {
+        if((TIM1CH4_CAPTURE_STA&0X80)==0)//还未成功捕获完整的高电平脉冲。（防止成功捕获了一次高电平脉冲后，还未等到main处理计算时间，又捕获到了一次变化沿。）
+        {
+            if(TIM1CH4_CAPTURE_STA&0X40)        //触发了变化沿，而之前已经有了上升沿，那么一定是下降沿，那么认为完整捕获了一次高电平持续时间         
+            {                  
+                TIM1CH4_CAPTURE_STA|=0X80;        //标记成功捕获到一次高电平脉宽
+                TIM1CH4_CAPTURE_VAL=HAL_TIM_ReadCapturedValue(&htim1,TIM_CHANNEL_4);//获取当前的捕获值.
+                TIM_RESET_CAPTUREPOLARITY(&htim1,TIM_CHANNEL_4);   //一定要先清除原来的设置！！
+                TIM_SET_CAPTUREPOLARITY(&htim1,TIM_CHANNEL_4,TIM_ICPOLARITY_RISING);//配置TIM1通道4上升沿捕获
+            }else                                  //还未开始,第一次捕获上升沿
+            {
+                TIM1CH4_CAPTURE_STA=0;            //清空
+                TIM1CH4_CAPTURE_VAL=0;
+                TIM1CH4_CAPTURE_STA|=0X40;        //标记触发到了上升沿
+                __HAL_TIM_DISABLE(&htim1);      //关闭定时器1，来重新配置定时器为捕获下降沿。等下次捕获到了下降沿的时候就是完整的高电平脉冲
+                __HAL_TIM_SET_COUNTER(&htim1,0);
+                TIM_RESET_CAPTUREPOLARITY(&htim1,TIM_CHANNEL_4);   //一定要先清除原来的设置！！
+                TIM_SET_CAPTUREPOLARITY(&htim1,TIM_CHANNEL_4,TIM_ICPOLARITY_FALLING);//定时器1通道4设置为下降沿捕获
+                __HAL_TIM_ENABLE(&htim1);        //使能定时器5
+            }                
+        }
+    }
 
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim == &htim1)
+    {
+        if((TIM1CH4_CAPTURE_STA&0X80)==0)//还未成功捕获
+        {
+            if(TIM1CH4_CAPTURE_STA&0X40)//已经到高电平了
+            {
+                if((TIM1CH4_CAPTURE_STA&0X3F)==0X3F)            //已经到了软件设计的最大高电平持续时间了，认为已经捕获了完整的高电平持续时间
+                {
+                    TIM1CH4_CAPTURE_STA|=0X80;        //标记成功捕获了，其实这个时候并没有检测到下降沿
+                    TIM1CH4_CAPTURE_VAL=0XFFFF;
+                }
+                else                         //一般情况会到这个位置，让循环数+1
+                    TIM1CH4_CAPTURE_STA++;
+            }     
+        }
+    }
+}
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

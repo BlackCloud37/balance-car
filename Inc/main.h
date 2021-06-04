@@ -36,14 +36,15 @@ extern "C" {
 #include "encoder.h"
 #include "mpu6050.h"
 #include "control.h"
-#include <stdio.h>
 #include "outputdata.h"
+#include <stdio.h>
 #include "oled.h"
+#include "ultrasonic.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+void SoftTimerCountDown(void);
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
