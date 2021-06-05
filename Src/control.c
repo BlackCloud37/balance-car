@@ -12,7 +12,7 @@
 #define MOTOR_OUT_MAX           1000	                         //占空比正最大值
 #define MOTOR_OUT_MIN         (-1000)                          //占空比负最大值
 
-#define CAR_ANGLE_SET 0                                        //目标角度
+#define CAR_ANGLE_SET (-1)                                     //目标角度
 #define CAR_ANGLE_SPEED_SET 0                                  //目标角速度
 
 #define CAR_ZERO_ANGLE  (g_fCarAngleOffset)                    //机械零点偏移值
@@ -23,7 +23,7 @@
 #define SPEED_CONTROL_PERIOD    25                             //速度环控制周期
 #define PULSE_PER_CM            70                             //每厘米的pulse数目
 
-float g_fCarAngleOffset = 2;                                   //每辆小车的机械零点都不一定相同
+float g_fCarAngleOffset = 0;                                   //每辆小车的机械零点都不一定相同
 short x_nAcc,y_nAcc,z_nAcc;                                    //加速度x轴、y轴、z轴数据
 short x_nGyro,y_nGyro,z_nGyro;                                 //陀螺仪x轴、y轴、z轴数据
 float x_fAcc,y_fAcc,z_fAcc;                                    //用于存储加速度x轴、y轴、z轴数据运算后的数据
@@ -289,8 +289,8 @@ void SetMode(enum ACTION_MODE mode) {
 		}
 	}
 }
-/*
-int g_iIsCenter, g_iIsLeft; // 线在中间, 线在左边 
+
+int g_iIsCenter, g_iIsLeft, g_oldWeight; // 线在中间, 线在左边 
 void Tailing(void) {
 	int cnt = 0;
 	if(La) cnt++;
@@ -298,55 +298,34 @@ void Tailing(void) {
 	if(Ra) cnt++;
 	if(Rb) cnt++;
 	
-	float speed = 3, direct = 0;
+	int weight = 0;
+	if (Lb) weight -= 2;
+	if (La) weight -= 1;
+	if (Ra) weight += 1;
+	if (Rb) weight += 2;
+	
+	float speed = 0.8, direct = 0;
+	
 	if (cnt == 4) {
-		
+		SetMode(STOP_MODE); // TODO: switch to sonic mode
 		return;
 	}
 	
 	if (cnt == 0) {
-		// 没线了, 可能偏离轨道也可能在轨道上
-		return;
-	}
-	else if (cnt >= 1) {
-		if(Lb) {
-			g_iIsCenter = 0;
-			g_iIsLeft = 1;
-		}
-		else if(Rb) {
-			g_iIsCenter = 0;
-			g_iIsLeft = 0;
-		}
-		else if(La) {
-			g_iIsCenter = 1;
-			g_iIsLeft = 1;
-		}
-		else if(Ra) {
-			g_iIsCenter = 1;
-			g_iIsLeft = 0;
-		}		
-	}
-	else {
-		//
-	}
-	
-	if (g_iIsCenter) {
-		direct = 0;
+		direct = g_oldWeight * 4;
 	} else {
-		if (g_iIsLeft) {
-			direct = -5;
-		} else {
-			direct = 5;
-		}
+		direct = (weight - g_oldWeight) * 4;
+		g_oldWeight = weight;
 	}
 	Steer(direct, speed);
 }
-*/
 
+/*
+float g_fOldDirect = 0;
 void Tailing(void) {
 	// TODO: 增加异常检测情况判断
 	int cnt = 0;
-	float speed = 3, direct = 0;
+	float speed = 1, direct = 0;
 	
 	if(La) {
 		cnt ++;
@@ -354,7 +333,7 @@ void Tailing(void) {
 	}
 	if(Lb) {
 		cnt ++;
-		direct -= 5;
+		direct -= 6;
 	}
 	if(Ra) {
 		cnt ++;
@@ -362,16 +341,20 @@ void Tailing(void) {
 	}
 	if(Rb) {
 		cnt ++;
-		direct += 5;
+		direct += 6;
 	}
 	
 	if (cnt == 4) {
 		// 终点线?
 		return;
 	}
+	if (cnt == 0) {
+		direct = g_fOldDirect;
+	}
+	g_fOldDirect = direct;
 	Steer(direct, speed);
 }
-
+*/
 char g_SonicTodo[3], g_SonicDoing;
 char g_SonicAction = 'f'; // 'l, r, f, b'
 char g_SonicMem[2];

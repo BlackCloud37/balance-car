@@ -150,9 +150,9 @@ int main(void)
 		if(SoftTimer[1] == 0)
 		{// 每隔5ms 执行一次
 			SoftTimer[1] = 5;
-			RunMode();
+			
 		}            
-
+		RunMode();
 		if(SoftTimer[2] == 0)
 		{
 			SoftTimer[2] = 20;//20毫秒刷新一次
