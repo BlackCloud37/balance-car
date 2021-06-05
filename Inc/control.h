@@ -13,10 +13,11 @@ extern int g_nLeftMotorOutput;
 extern int g_nSpeedControlPeriod;//速度环控制周期计算量
 
 enum ACTION_MODE{
-	STOP_MODE = 0, FORWARD_MODE, BACKWARD_MODE, LEFTMOVE_MODE, RIGHTMOVE_MODE, RI_MODE, SONIC_MODE
+	STOP_MODE = 0, FORWARD_MODE, BACKWARD_MODE, LEFTMOVE_MODE, RIGHTMOVE_MODE, TAILING_MODE, SONIC_MODE
 };
 extern enum ACTION_MODE g_currentMode;
 
+extern char g_SonicDoing, g_SonicAction;
 void SpeedControlOutput(void);
 void GetMpuData(void);
 void AngleCalculate(void);

@@ -6,6 +6,7 @@
 #include "outputdata.h"
 #include "tim.h"
 #include "main.h"
+#include "infrare.h"
 
 #define MOTOR_OUT_DEAD_VAL       0	                           //ËÀÇøÖµ
 #define MOTOR_OUT_MAX           1000	                         //Õ¼¿Õ±ÈÕý×î´óÖµ
@@ -166,7 +167,6 @@ void MotorOutput(void)//µç»úÊä³öº¯Êý,½«Ö±Á¢¿ØÖÆ¡¢ËÙ¶È¿ØÖÆ¡¢·½Ïò¿ØÖÆµÄÊä³öÁ¿½øÐÐµ
 	g_fLeftMotorOut  = g_fAngleControlOut - g_fSpeedControlOut - g_fDirection ;	//ÕâÀïµÄµç»úÊä³öµÈÓÚ½Ç¶È»·¿ØÖÆÁ¿ + ËÙ¶È»·Íâ»·,ÕâÀïµÄ - g_fSpeedControlOut ÊÇÒòÎªËÙ¶È»·µÄ¼«ÐÔ¸ú½Ç¶È»·²»Ò»Ñù£¬½Ç¶È»·ÊÇ¸º·´À¡£¬ËÙ¶È»·ÊÇÕý·´À¡
 	g_fRightMotorOut = g_fAngleControlOut - g_fSpeedControlOut + g_fDirection ;
 
-
 	/*Ôö¼ÓËÀÇø³£Êý*/
 	if((int)g_fLeftMotorOut>0)       g_fLeftMotorOut  += MOTOR_OUT_DEAD_VAL;
 	else if((int)g_fLeftMotorOut<0)  g_fLeftMotorOut  -= MOTOR_OUT_DEAD_VAL;
@@ -289,6 +289,124 @@ void SetMode(enum ACTION_MODE mode) {
 		}
 	}
 }
+/*
+int g_iIsCenter, g_iIsLeft; // ÏßÔÚÖÐ¼ä, ÏßÔÚ×ó±ß 
+void Tailing(void) {
+	int cnt = 0;
+	if(La) cnt++;
+	if(Lb) cnt++;
+	if(Ra) cnt++;
+	if(Rb) cnt++;
+	
+	float speed = 3, direct = 0;
+	if (cnt == 4) {
+		
+		return;
+	}
+	
+	if (cnt == 0) {
+		// Ã»ÏßÁË, ¿ÉÄÜÆ«Àë¹ìµÀÒ²¿ÉÄÜÔÚ¹ìµÀÉÏ
+		return;
+	}
+	else if (cnt >= 1) {
+		if(Lb) {
+			g_iIsCenter = 0;
+			g_iIsLeft = 1;
+		}
+		else if(Rb) {
+			g_iIsCenter = 0;
+			g_iIsLeft = 0;
+		}
+		else if(La) {
+			g_iIsCenter = 1;
+			g_iIsLeft = 1;
+		}
+		else if(Ra) {
+			g_iIsCenter = 1;
+			g_iIsLeft = 0;
+		}		
+	}
+	else {
+		//
+	}
+	
+	if (g_iIsCenter) {
+		direct = 0;
+	} else {
+		if (g_iIsLeft) {
+			direct = -5;
+		} else {
+			direct = 5;
+		}
+	}
+	Steer(direct, speed);
+}
+*/
+
+void Tailing(void) {
+	// TODO: Ôö¼ÓÒì³£¼ì²âÇé¿öÅÐ¶Ï
+	int cnt = 0;
+	float speed = 3, direct = 0;
+	
+	if(La) {
+		cnt ++;
+		direct -= 3;
+	}
+	if(Lb) {
+		cnt ++;
+		direct -= 5;
+	}
+	if(Ra) {
+		cnt ++;
+		direct += 3;
+	}
+	if(Rb) {
+		cnt ++;
+		direct += 5;
+	}
+	
+	if (cnt == 4) {
+		// ÖÕµãÏß?
+		return;
+	}
+	Steer(direct, speed);
+}
+
+char g_SonicTodo[3], g_SonicDoing;
+char g_SonicAction = 'f'; // 'l, r, f, b'
+char g_SonicMem[2];
+
+// return finished
+int SonicFinished(void) {
+  switch(g_SonicAction) {
+		case 'f':{
+			return 1;
+		}
+		case 'b':{
+			if (g_iLeftTurnRoundCnt >= 0 && g_iRightTurnRoundCnt >= 0) {
+				return 1;
+			}
+			return 0;
+		}
+		case 'l':{
+			if (g_iRightTurnRoundCnt <= 0) {
+				return 1;
+			}
+			return 0;
+		}
+		case 'r':{
+			if (g_iLeftTurnRoundCnt <= 0) {
+				return 1;
+			}
+			return 0;
+		}
+		default:{
+			Steer(0,4);
+			return 1;
+		}
+	}
+}
+
 
 void RunMode(void) {
 	switch(g_currentMode) {
@@ -296,12 +414,84 @@ void RunMode(void) {
 		case RIGHTMOVE_MODE:
 		case FORWARD_MODE: {
 			// < 0 < 0 stop
-			if (g_iLeftTurnRoundCnt <= 0 && g_iRightTurnRoundCnt <= 0) SetMode(STOP_MODE);
+			if (g_iLeftTurnRoundCnt <= 0 && g_iRightTurnRoundCnt <= 0) 
+				SetMode(STOP_MODE);
 			break;
 		}
 		case BACKWARD_MODE: {
 			// > 0 > 0 stop
-			if (g_iLeftTurnRoundCnt >= 0 && g_iRightTurnRoundCnt >= 0) SetMode(STOP_MODE);
+			if (g_iLeftTurnRoundCnt >= 0 && g_iRightTurnRoundCnt >= 0) 
+				SetMode(STOP_MODE);
+			break;
+		}
+		case TAILING_MODE: {
+			Tailing();
+			break;
+		}
+		case SONIC_MODE: {
+			if(Distance >= 0 && Distance <= 25) {
+				// ÐÐ¶¯¶ÓÁÐÎª¿Õ
+				if (!g_SonicTodo[0] && !g_SonicTodo[1] && !g_SonicTodo[2]) {
+					if (Distance <= 10) {
+						g_SonicTodo[0] = g_SonicTodo[1] = g_SonicTodo[2] = 'b';
+					} else {
+						char lastDirect = 'l';
+						if (!g_SonicMem[0] && g_SonicMem[1])
+							lastDirect = g_SonicMem[1];
+						else
+							lastDirect = g_SonicMem[0];
+						
+						if (lastDirect == 'l') {
+							g_SonicTodo[0] = 'r';
+							g_SonicTodo[1] = 'l';
+							g_SonicTodo[2] = 'l';
+						}
+						else {
+							g_SonicTodo[0] = 'l';
+							g_SonicTodo[1] = 'r';
+							g_SonicTodo[2] = 'r';
+						}
+						// ¸üÐÂÀúÊ·×ªÍä¼ÇÂ¼
+						g_SonicMem[0] = g_SonicMem[1];
+						g_SonicMem[1] = g_SonicTodo[0];
+					}
+					g_SonicDoing = 0;
+				}
+				
+				if(SonicFinished()) {
+					g_SonicAction = g_SonicTodo[g_SonicDoing];
+					if (g_SonicDoing == 1) {
+						g_SonicMem[1] = g_SonicMem[0];
+						g_SonicMem[0] = 0;
+					}
+					if (g_SonicDoing == 2) {
+						g_SonicMem[1] = g_SonicAction; 
+					}
+					if (g_SonicAction == 'f') {
+						Steer(0, 4);
+					} 
+					else if (g_SonicAction == 'b') {
+						Steer(0, -4);
+						g_iLeftTurnRoundCnt = g_iRightTurnRoundCnt = - 2 * PULSE_PER_CM;
+					} 
+					else if (g_SonicAction == 'r') {
+						Steer(6, -1);
+						g_iLeftTurnRoundCnt = 20 * PULSE_PER_CM;
+					} 
+					else if (g_SonicAction == 'l') {
+						Steer(-6, -1);
+						g_iRightTurnRoundCnt = 20 * PULSE_PER_CM;
+					}
+					g_SonicDoing++;
+					g_SonicDoing = g_SonicDoing % 3;
+				}
+			} else {
+				if (SonicFinished()) {
+					g_SonicAction = 'f';
+					g_SonicTodo[0] = g_SonicTodo[1] = g_SonicTodo[2] = g_SonicDoing = 0;
+					Steer(0, 4);
+				}
+			}
 			break;
 		}
 		default: {
@@ -310,3 +500,4 @@ void RunMode(void) {
 		}
 	}
 }
+
