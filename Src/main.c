@@ -138,7 +138,7 @@ int main(void)
   u8g2_SetPowerSave(&u8g2,0);//唤醒显示器
 	u8g2_SetFont(&u8g2,u8g2_font_6x12_mr);//设置英文字体
 	
-	SetMode(TAILING_MODE);
+	SetMode(SONIC_MODE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -149,10 +149,10 @@ int main(void)
 		SecTask();//秒级任务
 		if(SoftTimer[1] == 0)
 		{// 每隔5ms 执行一次
-			SoftTimer[1] = 5;
-			
+			SoftTimer[1] = 20;
+			RunMode();
 		}            
-		RunMode();
+		
 		if(SoftTimer[2] == 0)
 		{
 			SoftTimer[2] = 20;//20毫秒刷新一次

@@ -12,7 +12,7 @@
 #define MOTOR_OUT_MAX           1000	                         //Õ¼¿Õ±ÈÕý×î´óÖµ
 #define MOTOR_OUT_MIN         (-1000)                          //Õ¼¿Õ±È¸º×î´óÖµ
 
-#define CAR_ANGLE_SET (-1)                                     //Ä¿±ê½Ç¶È
+#define CAR_ANGLE_SET (0)                                     //Ä¿±ê½Ç¶È
 #define CAR_ANGLE_SPEED_SET 0                                  //Ä¿±ê½ÇËÙ¶È
 
 #define CAR_ZERO_ANGLE  (g_fCarAngleOffset)                    //»úÐµÁãµãÆ«ÒÆÖµ
@@ -23,7 +23,7 @@
 #define SPEED_CONTROL_PERIOD    25                             //ËÙ¶È»·¿ØÖÆÖÜÆÚ
 #define PULSE_PER_CM            70                             //Ã¿ÀåÃ×µÄpulseÊýÄ¿
 
-float g_fCarAngleOffset = 0;                                   //Ã¿Á¾Ð¡³µµÄ»úÐµÁãµã¶¼²»Ò»¶¨ÏàÍ¬
+float g_fCarAngleOffset = 2;                                   //Ã¿Á¾Ð¡³µµÄ»úÐµÁãµã¶¼²»Ò»¶¨ÏàÍ¬
 short x_nAcc,y_nAcc,z_nAcc;                                    //¼ÓËÙ¶ÈxÖá¡¢yÖá¡¢zÖáÊý¾Ý
 short x_nGyro,y_nGyro,z_nGyro;                                 //ÍÓÂÝÒÇxÖá¡¢yÖá¡¢zÖáÊý¾Ý
 float x_fAcc,y_fAcc,z_fAcc;                                    //ÓÃÓÚ´æ´¢¼ÓËÙ¶ÈxÖá¡¢yÖá¡¢zÖáÊý¾ÝÔËËãºóµÄÊý¾Ý
@@ -69,6 +69,7 @@ int g_iLeftTurnRoundCnt = 0;
 int g_iRightTurnRoundCnt = 0;
 
 
+int g_HALT;
 
 void GetMpuData(void)//¶ÁÈ¡MPU-6050Êý¾Ý
 {
@@ -179,7 +180,8 @@ void MotorOutput(void)//µç»úÊä³öº¯Êý,½«Ö±Á¢¿ØÖÆ¡¢ËÙ¶È¿ØÖÆ¡¢·½Ïò¿ØÖÆµÄÊä³öÁ¿½øÐÐµ
 	if((int)g_fRightMotorOut > MOTOR_OUT_MAX)	g_fRightMotorOut = MOTOR_OUT_MAX;
 	if((int)g_fRightMotorOut < MOTOR_OUT_MIN)	g_fRightMotorOut = MOTOR_OUT_MIN;
 	
-  SetMotorVoltageAndDirection((int)g_fLeftMotorOut,(int)g_fRightMotorOut);
+	if (!g_HALT)
+		SetMotorVoltageAndDirection((int)g_fLeftMotorOut,(int)(g_fRightMotorOut * .95));
 }
 
 void AngleControl(void)	 //½Ç¶È»·¿ØÖÆº¯Êý
@@ -266,7 +268,7 @@ void SetMode(enum ACTION_MODE mode) {
 			// > 0 > 0 stop
 			g_iLeftTurnRoundCnt = - 100 * PULSE_PER_CM;
 			g_iRightTurnRoundCnt = - 100 * PULSE_PER_CM;
-			Steer(0, -3);
+			Steer(0, -4);
 			break;
 		}
 		case LEFTMOVE_MODE: {
@@ -285,12 +287,15 @@ void SetMode(enum ACTION_MODE mode) {
 		}
 		default: {
 			Steer(0,0);
+		  g_lLeftMotorPulseSigma = g_lRightMotorPulseSigma = g_fCarPosition = g_fCarSpeedPrev = g_fSpeedControlOutOld = 0;
+			g_iLeftTurnRoundCnt = g_iRightTurnRoundCnt = 0;
 			break;
 		}
 	}
 }
 
-int g_iIsCenter, g_iIsLeft, g_oldWeight; // ÏßÔÚÖÐ¼ä, ÏßÔÚ×ó±ß 
+int g_iIsCenter, g_iIsLeft, g_oldWeight; // ÏßÔÚÖÐ¼ä, ÏßÔÚ×ó±ß
+float g_fOldDirect;
 void Tailing(void) {
 	int cnt = 0;
 	if(La) cnt++;
@@ -304,19 +309,21 @@ void Tailing(void) {
 	if (Ra) weight += 1;
 	if (Rb) weight += 2;
 	
-	float speed = 0.8, direct = 0;
+	float speed = 2, direct = 0;
 	
-	if (cnt == 4) {
-		SetMode(STOP_MODE); // TODO: switch to sonic mode
+	if (cnt >= 3) {
+		SetMode(SONIC_MODE); // TODO: switch to sonic mode
 		return;
 	}
 	
 	if (cnt == 0) {
-		direct = g_oldWeight * 4;
+		direct = g_oldWeight * 5;
 	} else {
-		direct = (weight - g_oldWeight) * 4;
+		direct = (weight - g_oldWeight) * 5;
 		g_oldWeight = weight;
 	}
+	direct = 0.7 * direct + 0.3 * g_fOldDirect;
+	g_fOldDirect = direct;
 	Steer(direct, speed);
 }
 
@@ -357,30 +364,47 @@ void Tailing(void) {
 */
 char g_SonicTodo[3], g_SonicDoing;
 char g_SonicAction = 'f'; // 'l, r, f, b'
+char g_SonicPrevAction = 'f';
 char g_SonicMem[2];
 
 // return finished
 int SonicFinished(void) {
   switch(g_SonicAction) {
 		case 'f':{
+			g_SonicPrevAction = 'f';
 			return 1;
 		}
 		case 'b':{
 			if (g_iLeftTurnRoundCnt >= 0 && g_iRightTurnRoundCnt >= 0) {
+				g_SonicPrevAction = 'b';
 				return 1;
 			}
 			return 0;
 		}
 		case 'l':{
-			if (g_iRightTurnRoundCnt <= 0) {
+			if (g_iLeftTurnRoundCnt - g_iRightTurnRoundCnt >= 1400) {
+				g_SonicPrevAction = 'l';
 				return 1;
 			}
+			/*
+			if (g_iRightTurnRoundCnt <= 0) {
+				g_SonicPrevAction = 'l';
+				return 1;
+			}
+			*/
 			return 0;
 		}
 		case 'r':{
-			if (g_iLeftTurnRoundCnt <= 0) {
+			if (g_iRightTurnRoundCnt - g_iLeftTurnRoundCnt >= 1400) {
+				g_SonicPrevAction = 'r';
 				return 1;
 			}
+			/*
+			if (g_iLeftTurnRoundCnt <= 0) {
+				g_SonicPrevAction = 'r';
+				return 1;
+			}
+			*/
 			return 0;
 		}
 		default:{
@@ -390,6 +414,7 @@ int SonicFinished(void) {
 	}
 }
 
+int g_SonicCloseCnt;
 
 void RunMode(void) {
 	switch(g_currentMode) {
@@ -412,10 +437,23 @@ void RunMode(void) {
 			break;
 		}
 		case SONIC_MODE: {
-			if(Distance >= 0 && Distance <= 25) {
+			if (Lb && La && Rb && Ra) {
+				g_HALT = 1;
+			}
+			if(Distance >= 0 && Distance <= 22) {
 				// ÐÐ¶¯¶ÓÁÐÎª¿Õ
+				g_SonicCloseCnt++;
+				if (g_SonicCloseCnt < 3) {
+					break;
+				} else {
+					g_SonicCloseCnt = 0;
+				}
 				if (!g_SonicTodo[0] && !g_SonicTodo[1] && !g_SonicTodo[2]) {
-					if (Distance <= 10) {
+					if (g_SonicPrevAction == 'r' || g_SonicPrevAction == 'l') {
+						Steer(0, 2);
+						HAL_Delay(100);
+					}
+					if (Distance <= 0) {
 						g_SonicTodo[0] = g_SonicTodo[1] = g_SonicTodo[2] = 'b';
 					} else {
 						char lastDirect = 'l';
@@ -426,13 +464,13 @@ void RunMode(void) {
 						
 						if (lastDirect == 'l') {
 							g_SonicTodo[0] = 'r';
-							g_SonicTodo[1] = 'l';
-							g_SonicTodo[2] = 'l';
+							g_SonicTodo[1] = 'f';
+							g_SonicTodo[2] = 'f';
 						}
 						else {
 							g_SonicTodo[0] = 'l';
-							g_SonicTodo[1] = 'r';
-							g_SonicTodo[2] = 'r';
+							g_SonicTodo[1] = 'f';
+							g_SonicTodo[2] = 'f';
 						}
 						// ¸üÐÂÀúÊ·×ªÍä¼ÇÂ¼
 						g_SonicMem[0] = g_SonicMem[1];
@@ -442,6 +480,10 @@ void RunMode(void) {
 				}
 				
 				if(SonicFinished()) {
+					if (g_SonicPrevAction == 'r' || g_SonicPrevAction == 'l') {
+						Steer(0, 2);
+						HAL_Delay(200);
+					}
 					g_SonicAction = g_SonicTodo[g_SonicDoing];
 					if (g_SonicDoing == 1) {
 						g_SonicMem[1] = g_SonicMem[0];
@@ -451,28 +493,33 @@ void RunMode(void) {
 						g_SonicMem[1] = g_SonicAction; 
 					}
 					if (g_SonicAction == 'f') {
-						Steer(0, 4);
+						Steer(0, 2);
 					} 
 					else if (g_SonicAction == 'b') {
-						Steer(0, -4);
+						Steer(0, -2);
 						g_iLeftTurnRoundCnt = g_iRightTurnRoundCnt = - 2 * PULSE_PER_CM;
 					} 
 					else if (g_SonicAction == 'r') {
-						Steer(6, -1);
-						g_iLeftTurnRoundCnt = 20 * PULSE_PER_CM;
+						Steer(8, -2);
+						g_iRightTurnRoundCnt = 0;
+						g_iLeftTurnRoundCnt = 0;
+						//g_iLeftTurnRoundCnt = 14 * PULSE_PER_CM;
 					} 
 					else if (g_SonicAction == 'l') {
-						Steer(-6, -1);
-						g_iRightTurnRoundCnt = 20 * PULSE_PER_CM;
+						Steer(-8, -2);
+						g_iRightTurnRoundCnt = 0;
+						g_iLeftTurnRoundCnt = 0;
+						//g_iRightTurnRoundCnt = 15 * PULSE_PER_CM;
 					}
 					g_SonicDoing++;
 					g_SonicDoing = g_SonicDoing % 3;
 				}
 			} else {
 				if (SonicFinished()) {
+					g_SonicCloseCnt = 0;
 					g_SonicAction = 'f';
 					g_SonicTodo[0] = g_SonicTodo[1] = g_SonicTodo[2] = g_SonicDoing = 0;
-					Steer(0, 4);
+					Steer(0, 2);
 				}
 			}
 			break;

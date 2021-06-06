@@ -33,7 +33,7 @@ void Read_Distane(void)
 			  // 溢出
 				Distance = 60;
 			}
-			Distance = oldDistance * 0.4 + Distance * 0.6; // 假模假样滤波
+			Distance = oldDistance * 0.1 + Distance * 0.9; // 假模假样滤波
 			TIM1CH4_CAPTURE_STA=0;                //开启下一次捕获
     }                
 }
