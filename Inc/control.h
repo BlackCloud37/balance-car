@@ -8,6 +8,7 @@ extern unsigned int g_nGetPulseCount;  //捕获脉冲计数，用在中断中
 extern unsigned int g_nSpeedControlCount;
 extern float g_fCarAngle;
 extern int g_iLeftTurnRoundCnt, g_iRightTurnRoundCnt;
+extern unsigned int g_nLeftPulseTotal, g_nRightPulseTotal;
 extern int g_nSpeedTarget;
 extern int g_nLeftMotorOutput;
 extern int g_nSpeedControlPeriod;//速度环控制周期计算量
@@ -17,7 +18,9 @@ enum ACTION_MODE{
 };
 extern enum ACTION_MODE g_currentMode;
 
-extern char g_SonicDoing, g_SonicAction;
+//extern char g_SonicDoing, g_SonicAction;
+extern int g_iCurrentDeg;
+float GetDirect(void);
 void SpeedControlOutput(void);
 void GetMpuData(void);
 void AngleCalculate(void);
@@ -29,4 +32,6 @@ void AngleControl(void);
 void SpeedControl(void);
 void SetMode(enum ACTION_MODE mode);
 void RunMode(void);
+void Steer(float direct, float speed);
+int KeepDirect(void);
 #endif

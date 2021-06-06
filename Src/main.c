@@ -138,20 +138,22 @@ int main(void)
   u8g2_SetPowerSave(&u8g2,0);//唤醒显示器
 	u8g2_SetFont(&u8g2,u8g2_font_6x12_mr);//设置英文字体
 	
-	SetMode(SONIC_MODE);
-  /* USER CODE END 2 */
-
+	SetMode(TAILING_MODE);
+	
+	/* USER CODE END 2 */
+	
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		
-		SecTask();//秒级任务
-		if(SoftTimer[1] == 0)
-		{// 每隔5ms 执行一次
-			SoftTimer[1] = 20;
+		KeepDirect();
+		SecTask();              // 秒级任务
+		if(SoftTimer[1] == 0) { 
+			SoftTimer[1] = 40;
 			RunMode();
-		}            
+		}
+		
+		
 		
 		if(SoftTimer[2] == 0)
 		{
@@ -162,18 +164,23 @@ int main(void)
 			sprintf(cStr,"%d %d",g_iLeftTurnRoundCnt, g_iRightTurnRoundCnt);//将角度数据格式化输出到字符串cStr            
 			u8g2_DrawStr(&u8g2,50,10,cStr);//输出实时变化的角度数据
 
-			u8g2_DrawStr(&u8g2,0,30,"Distance:");//输出固定不变的字符串Distane：            
+			u8g2_DrawStr(&u8g2,0,20,"Distance:");//输出固定不变的字符串Distane：            
 			sprintf(cStr2,"%5.1f",(float)Distance);//将超声波距离数据格式化输出到字符串cStr2
-			u8g2_DrawStr(&u8g2,50,30,cStr2);//输出实时变化的超声波距离
+			u8g2_DrawStr(&u8g2,50,20,cStr2);//输出实时变化的超声波距离
 			
 			
-			u8g2_DrawStr(&u8g2, 0, 50, "IR:");
+			u8g2_DrawStr(&u8g2, 0, 30, "IR:");
 			sprintf(cStr3, "%d %d %d %d", 
 				Lb, La, Ra, Rb
 			);
 			//sprintf(cStr3, "%d %c", (int)g_SonicDoing, g_SonicAction);
-			u8g2_DrawStr(&u8g2,50,50,cStr3);
-				
+			u8g2_DrawStr(&u8g2,50,30,cStr3);
+			
+			u8g2_DrawStr(&u8g2, 0, 40, "Direct:");
+			char cStr4[20];
+
+			sprintf(cStr4, "%3.1f %d", GetDirect(), g_iCurrentDeg);
+			u8g2_DrawStr(&u8g2, 50, 40, cStr4);
 			/*
 			u8g2_DrawStr(&u8g2, 0, 50, "MODE:");
 			sprintf(cStr3, "%d %d %d", SoftTimer[3], modeCnt, g_currentMode);
@@ -184,9 +191,27 @@ int main(void)
 			Read_Distane();//每20ms读一次超声波数据
 		}
 		
-		/*
 		if(SoftTimer[3] == 0) {
-			SoftTimer[3] = 10000;
+			SoftTimer[3] = 5000;
+			modeCnt++;
+			/*
+			switch(modeCnt) {
+				case 0:
+					currentDeg = 0;
+			    break;
+				case 1:
+					currentDeg = 90;
+					break;
+				case 2:
+					currentDeg = -90;
+					break;
+				case 3:
+					currentDeg = 0;
+				default:
+					currentDeg = 0;
+			}
+			*/
+			/*
 			if (modeCnt == 0)
 				SetMode(FORWARD_MODE);
 			else if (modeCnt == 2)
@@ -197,9 +222,9 @@ int main(void)
 				SetMode(RIGHTMOVE_MODE);
 			else
 				SetMode(STOP_MODE);
-			modeCnt++;
+			*/
 		}
-		*/
+		
 		
 		
     /* USER CODE END WHILE */
