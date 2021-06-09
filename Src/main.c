@@ -139,7 +139,7 @@ int main(void)
   u8g2_SetPowerSave(&u8g2,0);//唤醒显示器
 	u8g2_SetFont(&u8g2,u8g2_font_6x12_mr);//设置英文字体
 	
-	SetMode(SONIC_MODE);
+	SetMode(TAILING_MODE);
 	
 	/* USER CODE END 2 */
 	
@@ -153,7 +153,7 @@ int main(void)
 			KeepDirect(1);
 		SecTask();              // 秒级任务
 		if(SoftTimer[1] == 0) { 
-			SoftTimer[1] = 40;
+			SoftTimer[1] = 20;
 			RunMode();
 		}
 		
@@ -182,7 +182,7 @@ int main(void)
 			u8g2_DrawStr(&u8g2, 0, 40, "Direct:");
 			char cStr4[20];
 
-			sprintf(cStr4, "%3.1f %d %2.1f", GetDirect(), g_iCurrentDeg, g_fCarSpeedReal);
+			sprintf(cStr4, "%3.1f %2.1f %2.1f", GetDirect(), g_fCarAngle, g_fCarSpeedReal);
 			u8g2_DrawStr(&u8g2, 50, 40, cStr4);
 			u8g2_SendBuffer(&u8g2);//绘制缓冲区的内容
 			

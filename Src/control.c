@@ -71,7 +71,7 @@ int g_iLeftTurnRoundCnt = 0;
 int g_iRightTurnRoundCnt = 0;
 
 
-int g_HALT = 0;
+int g_HALT = 1;
 int g_iCurrentDeg = 0;
 
 #define PULSE_PER_DEG (20)
@@ -85,6 +85,7 @@ float GetDirect(void) {
 float g_directSpeed_speed[] = {8, 2}; // {转弯速度, 直行速度}
 
 int KeepDirect(int still) {
+	if (g_currentMode == TAILING_MODE) return 0;
 	int diff = (int)GetDirect() - g_iCurrentDeg;
 	float dspeed = 0, ddirect = 1, speed = g_directSpeed_speed[1];
 	if (diff < 0) {
@@ -97,7 +98,10 @@ int KeepDirect(int still) {
 		// 大于15度，快速转弯
 		if (still) {
 			// sonic/tailing
-			speed = -0.5;
+			if (ddirect == 1)
+				speed = -1;
+			else
+				speed = -.5;
 			dspeed = g_directSpeed_speed[0];
 		}
 		else {
@@ -255,7 +259,8 @@ void SpeedControl(void)//速度外环控制函数
 
     g_fCarSpeed = (g_lLeftMotorPulseSigma + g_lRightMotorPulseSigma ) / 2;//左轮和右轮的速度平均值等于小车速度
     g_lLeftMotorPulseSigma = g_lRightMotorPulseSigma = 0;      //全局变量，注意及时清零
-		g_fCarSpeedReal = (g_fCarSpeed / 1537) * 6.28 * 6.5; // cm/s
+		if (!KeepDirect(1)) g_fCarSpeedReal = 0.1; 
+		else g_fCarSpeedReal = (g_fCarSpeed / 1537) * 6.28 * 6.5; // cm/s
     g_fCarSpeed = 0.7 * g_fCarSpeedPrev + 0.3 * g_fCarSpeed ;//低通滤波，使速度更平滑
     g_fCarSpeedPrev = g_fCarSpeed; //保存前一次速度  
 
@@ -297,6 +302,7 @@ float Scale(float input, float inputMin, float inputMax, float outputMin, float 
 // 运动(方向/速度)控制函数
 void Steer(float direct, float speed)
 {
+	speed += CAR_ANGLE_SET;
 	if(direct > 0)
 		g_fDirection = Scale(direct, 0, 10, 0, 400);
 	else
@@ -345,6 +351,9 @@ void SetMode(enum ACTION_MODE mode) {
 			g_iCurrentDeg = 0;
 			break;
 		}
+		case TAILING_MODE: {
+			g_HALT = 1;
+		}
 		default: {
 			Steer(0,0);
 		  g_lLeftMotorPulseSigma = g_lRightMotorPulseSigma = g_fCarPosition = g_fCarSpeedPrev = g_fSpeedControlOutOld = 0;
@@ -362,16 +371,17 @@ void Tailing(void) {
 	if(Lb) cnt++;
 	if(Ra) cnt++;
 	if(Rb) cnt++;
-	
+	//if (!IsInfrareOK()) cnt = 0;
+	if (cnt) { g_HALT = 0; };
 	int weight = 0;
 	if (Lb) weight -= 2;
 	if (La) weight -= 1;
 	if (Ra) weight += 1;
 	if (Rb) weight += 2;
-	
+	//if (!IsInfrareOK()) weight = 0;
 	float speed = 2, direct = 0;
 	
-	if (cnt >= 4) {
+	if (cnt >= 4 && !g_HALT) {
 		SetMode(SONIC_MODE);
 		return;
 	}
@@ -384,6 +394,7 @@ void Tailing(void) {
 	}
 	direct = 0.7 * direct + 0.3 * g_fOldDirect;
 	g_fOldDirect = direct;
+	//if (direct < 5) speed = 3; 
 	Steer(direct, speed);
 }
 
@@ -414,6 +425,8 @@ void RunMode(void) {
 		}
 		case TAILING_MODE: {
 			Tailing();
+			if (Distance >= 0 && Distance <= 30) 
+				SetMode(SONIC_MODE);
 			break;
 		}
 		case SONIC_MODE: {
@@ -423,21 +436,25 @@ void RunMode(void) {
 			if (Rb) cnt++;
 			if (Ra) cnt++;
 			
-			if(La && Lb && Ra && Rb && g_IfTurned) {
+			if(La && Lb && Ra && Rb && g_IfTurned && IsInfrareOK()) {
 				g_SonicStopCnt++;
-				if (g_SonicStopCnt == 2) {
-					//g_HALT = 1;
+				if (g_SonicStopCnt >= 1) {
+					HAL_Delay(500);
+					g_HALT = 1;
 				}
 			} else {
 				g_SonicStopCnt = 0;
 			}
 
-			float dis = 18;
+			float dis = 20;
 			if (g_fCarSpeedReal > 0)
-			 dis += g_fCarSpeedReal * 4; // 6
+			  dis += g_fCarSpeedReal * 6;
+			//if (Distance > dis && Distance <= dis + 6) {
+				//g_directSpeed_speed[1] = 2;
+			//}
 			if(Distance >= 0 && Distance <= dis) {
 				g_SonicCloseCnt++;
-				if (g_SonicCloseCnt < 3) {
+				if (g_SonicCloseCnt < 6) {
 					break;
 				} else {
 					g_SonicCloseCnt = 0;
@@ -460,7 +477,10 @@ void RunMode(void) {
 					}
 				}
 			} else {
-				g_directSpeed_speed[1] = 2; //冲冲冲 4
+				if (g_IfTurned)
+					g_directSpeed_speed[1] = 5.5; //冲冲冲 4
+				else
+					g_directSpeed_speed[1] = 3;
 			}
 			break;
 		}

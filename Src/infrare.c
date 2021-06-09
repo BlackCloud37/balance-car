@@ -1,6 +1,7 @@
 #include "gpio.h"
 #include "infrare.h"
-
+#include "control.h"
+#include "math.h"
 /*
 	四通道红外模块
 	result从高位到低位分别标识通道Rb Ra Lb La 
@@ -37,5 +38,5 @@ void InfrareSelfCheck(void)
 
 int IsInfrareOK(void)
 {
-	return !InfrareError;
+	return g_fCarAngle >= -10 && g_fCarAngle <= 1;
 }
