@@ -23,7 +23,7 @@
 #define SPEED_CONTROL_PERIOD    25                             //速度环控制周期
 #define PULSE_PER_CM            70                             //每厘米的pulse数目
 
-float g_fCarAngleOffset = 2;                                   //每辆小车的机械零点都不一定相同
+float g_fCarAngleOffset = 3;                                   //每辆小车的机械零点都不一定相同
 short x_nAcc,y_nAcc,z_nAcc;                                    //加速度x轴、y轴、z轴数据
 short x_nGyro,y_nGyro,z_nGyro;                                 //陀螺仪x轴、y轴、z轴数据
 float x_fAcc,y_fAcc,z_fAcc;                                    //用于存储加速度x轴、y轴、z轴数据运算后的数据
@@ -309,7 +309,7 @@ void SetMode(enum ACTION_MODE mode) {
 	g_currentMode = mode;
 	g_iCurrentDeg = 0;
 	g_directSpeed_speed[0] = 8;
-	g_directSpeed_speed[1] = 2;
+	g_directSpeed_speed[1] = 4;
 	
 	switch(mode) {
 		case FORWARD_MODE: {
@@ -321,8 +321,8 @@ void SetMode(enum ACTION_MODE mode) {
 		}
 		case BACKWARD_MODE: {
 			// > 0 > 0 stop
-			g_iLeftTurnRoundCnt = - 110 * PULSE_PER_CM;
-			g_iRightTurnRoundCnt = - 110 * PULSE_PER_CM;
+			g_iLeftTurnRoundCnt = - 100 * PULSE_PER_CM;
+			g_iRightTurnRoundCnt = - 100 * PULSE_PER_CM;
 			g_iCurrentDeg = 0;
 			g_directSpeed_speed[1] = -4;
 			break;
@@ -331,7 +331,7 @@ void SetMode(enum ACTION_MODE mode) {
 			// < 0 < 0 stop
 			g_iRightTurnRoundCnt = 85 * PULSE_PER_CM;
 			g_iLeftTurnRoundCnt = g_iRightTurnRoundCnt - 24 * PULSE_PER_CM;
-			g_iCurrentDeg = -120;
+			g_iCurrentDeg = -140;
 			break;
 		}
 		case RIGHTMOVE_MODE: {
