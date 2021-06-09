@@ -7,6 +7,7 @@ extern unsigned int g_nMainEventCount; //主事件计数，用在中断中
 extern unsigned int g_nGetPulseCount;  //捕获脉冲计数，用在中断中
 extern unsigned int g_nSpeedControlCount;
 extern float g_fCarAngle;
+extern float g_fCarSpeedReal;
 extern int g_iLeftTurnRoundCnt, g_iRightTurnRoundCnt;
 extern unsigned int g_nLeftPulseTotal, g_nRightPulseTotal;
 extern int g_nSpeedTarget;

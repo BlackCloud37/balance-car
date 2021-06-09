@@ -139,7 +139,7 @@ int main(void)
   u8g2_SetPowerSave(&u8g2,0);//唤醒显示器
 	u8g2_SetFont(&u8g2,u8g2_font_6x12_mr);//设置英文字体
 	
-	SetMode(STOP_MODE);
+	SetMode(SONIC_MODE);
 	
 	/* USER CODE END 2 */
 	
@@ -177,24 +177,19 @@ int main(void)
 			sprintf(cStr3, "%d %d %d %d", 
 				Lb, La, Ra, Rb
 			);
-			//sprintf(cStr3, "%d %c", (int)g_SonicDoing, g_SonicAction);
 			u8g2_DrawStr(&u8g2,50,30,cStr3);
 			
 			u8g2_DrawStr(&u8g2, 0, 40, "Direct:");
 			char cStr4[20];
 
-			sprintf(cStr4, "%3.1f %d %d", GetDirect(), g_iCurrentDeg, modeCnt);
+			sprintf(cStr4, "%3.1f %d %2.1f", GetDirect(), g_iCurrentDeg, g_fCarSpeedReal);
 			u8g2_DrawStr(&u8g2, 50, 40, cStr4);
-			/*
-			u8g2_DrawStr(&u8g2, 0, 50, "MODE:");
-			sprintf(cStr3, "%d %d %d", SoftTimer[3], modeCnt, g_currentMode);
-			u8g2_DrawStr(&u8g2,50,50,cStr3);
-			*/
 			u8g2_SendBuffer(&u8g2);//绘制缓冲区的内容
 			
 			Read_Distane();//每20ms读一次超声波数据
 		}
 		
+		/*
 		if(SoftTimer[3] == 0) {
 			taskOne = 1;	
 			SoftTimer[3] = 100;
@@ -215,7 +210,7 @@ int main(void)
 				modeCnt++;
 			}
 		}
-		
+		*/
 		
 		
     /* USER CODE END WHILE */

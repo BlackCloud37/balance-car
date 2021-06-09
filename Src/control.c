@@ -74,7 +74,7 @@ int g_iRightTurnRoundCnt = 0;
 int g_HALT = 0;
 int g_iCurrentDeg = 0;
 
-#define PULSE_PER_DEG (21)
+#define PULSE_PER_DEG (20)
 
 float GetDirect(void) {
 	int diff = (int)g_nLeftPulseTotal - (int)g_nRightPulseTotal;
@@ -82,7 +82,7 @@ float GetDirect(void) {
 	return direct;
 }
 
-float g_directSpeed_speed[] = {8, 2};
+float g_directSpeed_speed[] = {8, 2}; // {转弯速度, 直行速度}
 
 int KeepDirect(int still) {
 	int diff = (int)GetDirect() - g_iCurrentDeg;
@@ -94,7 +94,9 @@ int KeepDirect(int still) {
 	}
 	
 	if (diff > 15 || diff < -15) {
+		// 大于15度，快速转弯
 		if (still) {
+			// sonic/tailing
 			speed = -0.5;
 			dspeed = g_directSpeed_speed[0];
 		}
@@ -103,6 +105,7 @@ int KeepDirect(int still) {
 			dspeed = 2;
 		}
 	} else if (diff != 0) {
+		// 15度内，慢速转弯
 		dspeed = 0.3;
 	}
 	
@@ -244,6 +247,7 @@ void AngleControl(void)	 //角度环控制函数
 
 
 // P0.8 I0.01
+float g_fCarSpeedReal = 0;
 void SpeedControl(void)//速度外环控制函数
 {
     float fP=10.25,fI=0.108; //速度环PI参数，    
@@ -251,7 +255,7 @@ void SpeedControl(void)//速度外环控制函数
 
     g_fCarSpeed = (g_lLeftMotorPulseSigma + g_lRightMotorPulseSigma ) / 2;//左轮和右轮的速度平均值等于小车速度
     g_lLeftMotorPulseSigma = g_lRightMotorPulseSigma = 0;      //全局变量，注意及时清零
-
+		g_fCarSpeedReal = (g_fCarSpeed / 1537) * 6.28 * 6.5; // cm/s
     g_fCarSpeed = 0.7 * g_fCarSpeedPrev + 0.3 * g_fCarSpeed ;//低通滤波，使速度更平滑
     g_fCarSpeedPrev = g_fCarSpeed; //保存前一次速度  
 
@@ -427,12 +431,11 @@ void RunMode(void) {
 			} else {
 				g_SonicStopCnt = 0;
 			}
-			
-			if (Distance >=16 && Distance <= 20) {
-				g_directSpeed_speed[1] = 0;
-				Steer(0,0);
-			}
-			if(Distance >= 0 && Distance <= 16) {
+
+			float dis = 18;
+			if (g_fCarSpeedReal > 0)
+			 dis += g_fCarSpeedReal * 4; // 6
+			if(Distance >= 0 && Distance <= dis) {
 				g_SonicCloseCnt++;
 				if (g_SonicCloseCnt < 3) {
 					break;
@@ -457,7 +460,7 @@ void RunMode(void) {
 					}
 				}
 			} else {
-				g_directSpeed_speed[1] = 2; //冲冲冲
+				g_directSpeed_speed[1] = 2; //冲冲冲 4
 			}
 			break;
 		}
