@@ -90,6 +90,7 @@ int main(void)
   char cStr2[6];
 	char cStr3[5];
 	int modeCnt = 0;
+	int taskOne = 0;
 	/* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -138,7 +139,7 @@ int main(void)
   u8g2_SetPowerSave(&u8g2,0);//唤醒显示器
 	u8g2_SetFont(&u8g2,u8g2_font_6x12_mr);//设置英文字体
 	
-	SetMode(TAILING_MODE);
+	SetMode(STOP_MODE);
 	
 	/* USER CODE END 2 */
 	
@@ -146,7 +147,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		KeepDirect();
+		if (taskOne) 
+			KeepDirect(0);
+		else 
+			KeepDirect(1);
 		SecTask();              // 秒级任务
 		if(SoftTimer[1] == 0) { 
 			SoftTimer[1] = 40;
@@ -179,7 +183,7 @@ int main(void)
 			u8g2_DrawStr(&u8g2, 0, 40, "Direct:");
 			char cStr4[20];
 
-			sprintf(cStr4, "%3.1f %d", GetDirect(), g_iCurrentDeg);
+			sprintf(cStr4, "%3.1f %d %d", GetDirect(), g_iCurrentDeg, modeCnt);
 			u8g2_DrawStr(&u8g2, 50, 40, cStr4);
 			/*
 			u8g2_DrawStr(&u8g2, 0, 50, "MODE:");
@@ -192,37 +196,24 @@ int main(void)
 		}
 		
 		if(SoftTimer[3] == 0) {
-			SoftTimer[3] = 5000;
-			modeCnt++;
-			/*
-			switch(modeCnt) {
-				case 0:
-					currentDeg = 0;
-			    break;
-				case 1:
-					currentDeg = 90;
-					break;
-				case 2:
-					currentDeg = -90;
-					break;
-				case 3:
-					currentDeg = 0;
-				default:
-					currentDeg = 0;
+			taskOne = 1;	
+			SoftTimer[3] = 100;
+			if (g_currentMode == STOP_MODE) {				
+				if (modeCnt == 0)
+					SetMode(FORWARD_MODE);
+				else if (modeCnt == 2)
+					SetMode(BACKWARD_MODE);
+				else if (modeCnt == 4)
+					SetMode(LEFTMOVE_MODE);
+				else if (modeCnt == 6)
+					SetMode(RIGHTMOVE_MODE);
+				else
+					SetMode(STOP_MODE);
+				if (modeCnt % 2 == 1) {
+					SoftTimer[3] = 2500;
+				}
+				modeCnt++;
 			}
-			*/
-			/*
-			if (modeCnt == 0)
-				SetMode(FORWARD_MODE);
-			else if (modeCnt == 2)
-				SetMode(BACKWARD_MODE);
-			else if (modeCnt == 4)
-				SetMode(LEFTMOVE_MODE);
-			else if (modeCnt == 6)
-				SetMode(RIGHTMOVE_MODE);
-			else
-				SetMode(STOP_MODE);
-			*/
 		}
 		
 		

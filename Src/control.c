@@ -82,9 +82,9 @@ float GetDirect(void) {
 	return direct;
 }
 
-float g_directSpeed_speed[] = {8, 1.5};
+float g_directSpeed_speed[] = {8, 2};
 
-int KeepDirect(void) {
+int KeepDirect(int still) {
 	int diff = (int)GetDirect() - g_iCurrentDeg;
 	float dspeed = 0, ddirect = 1, speed = g_directSpeed_speed[1];
 	if (diff < 0) {
@@ -94,12 +94,20 @@ int KeepDirect(void) {
 	}
 	
 	if (diff > 15 || diff < -15) {
-		dspeed = g_directSpeed_speed[0];
-		speed = -0.5;
+		if (still) {
+			speed = -0.5;
+			dspeed = g_directSpeed_speed[0];
+		}
+		else {
+			speed = 3;
+			dspeed = 2;
+		}
 	} else if (diff != 0) {
 		dspeed = 0.3;
 	}
+	
 	Steer(ddirect * dspeed, speed);
+	
 	if (diff > 15 || diff < -15) {
 		return 0;
 	}
@@ -299,33 +307,38 @@ void Steer(float direct, float speed)
 
 void SetMode(enum ACTION_MODE mode) {
 	g_currentMode = mode;
+	g_iCurrentDeg = 0;
+	g_directSpeed_speed[0] = 8;
+	g_directSpeed_speed[1] = 2;
+	
 	switch(mode) {
 		case FORWARD_MODE: {
 			// < 0 < 0 stop
 			g_iLeftTurnRoundCnt = 100 * PULSE_PER_CM;
 			g_iRightTurnRoundCnt = 100 * PULSE_PER_CM;
-			Steer(0, 3);
+			g_iCurrentDeg = 0;
 			break;
 		}
 		case BACKWARD_MODE: {
 			// > 0 > 0 stop
-			g_iLeftTurnRoundCnt = - 100 * PULSE_PER_CM;
-			g_iRightTurnRoundCnt = - 100 * PULSE_PER_CM;
-			Steer(0, -4);
+			g_iLeftTurnRoundCnt = - 110 * PULSE_PER_CM;
+			g_iRightTurnRoundCnt = - 110 * PULSE_PER_CM;
+			g_iCurrentDeg = 0;
+			g_directSpeed_speed[1] = -4;
 			break;
 		}
 		case LEFTMOVE_MODE: {
 			// < 0 < 0 stop
-			Steer(-1, 3);
 			g_iRightTurnRoundCnt = 85 * PULSE_PER_CM;
 			g_iLeftTurnRoundCnt = g_iRightTurnRoundCnt - 24 * PULSE_PER_CM;
+			g_iCurrentDeg = -120;
 			break;
 		}
 		case RIGHTMOVE_MODE: {
 			// < 0 < 0 stop
-			Steer(1, 3);
 			g_iLeftTurnRoundCnt = 85 * PULSE_PER_CM;
 			g_iRightTurnRoundCnt = g_iLeftTurnRoundCnt - 24 * PULSE_PER_CM;
+			g_iCurrentDeg = 0;
 			break;
 		}
 		default: {
@@ -354,8 +367,8 @@ void Tailing(void) {
 	
 	float speed = 2, direct = 0;
 	
-	if (cnt >= 3) {
-		SetMode(SONIC_MODE); // TODO: switch to sonic mode
+	if (cnt >= 4) {
+		SetMode(SONIC_MODE);
 		return;
 	}
 	
@@ -377,7 +390,12 @@ int g_SonicStopCnt;
 void RunMode(void) {
 	switch(g_currentMode) {
 		case LEFTMOVE_MODE:
-		case RIGHTMOVE_MODE:
+		case RIGHTMOVE_MODE: {
+			if (KeepDirect(0)) {
+				SetMode(STOP_MODE);
+			}
+			break;
+		}
 		case FORWARD_MODE: {
 			// < 0 < 0 stop
 			if (g_iLeftTurnRoundCnt <= 0 && g_iRightTurnRoundCnt <= 0) 
@@ -404,7 +422,7 @@ void RunMode(void) {
 			if(La && Lb && Ra && Rb && g_IfTurned) {
 				g_SonicStopCnt++;
 				if (g_SonicStopCnt == 2) {
-					g_HALT = 1;
+					//g_HALT = 1;
 				}
 			} else {
 				g_SonicStopCnt = 0;
@@ -421,7 +439,7 @@ void RunMode(void) {
 				} else {
 					g_SonicCloseCnt = 0;
 				}
-				if (KeepDirect()) {
+				if (KeepDirect(1)) {
 					g_IfTurned = 1;
 					char lastDirect = 'l';
 					if (!g_SonicMem[0] && g_SonicMem[1])

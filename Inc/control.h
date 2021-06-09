@@ -33,5 +33,5 @@ void SpeedControl(void);
 void SetMode(enum ACTION_MODE mode);
 void RunMode(void);
 void Steer(float direct, float speed);
-int KeepDirect(void);
+int KeepDirect(int still);
 #endif
